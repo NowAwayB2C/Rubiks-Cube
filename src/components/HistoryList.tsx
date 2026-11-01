@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, CheckCircle2, Clock, Trash2, Cloud, Database } from 'lucide-react';
+import { Clock, Trash2 } from 'lucide-react';
 import type { TimerSession } from '../types';
 import { formatDate, formatMinutesSecondsMillis } from '../utils/formatTime';
 
@@ -17,39 +17,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   isLoadingCloud,
 }) => {
   return (
-    <section className="w-full max-w-4xl mx-auto mt-10 px-4 mb-16">
-      {/* Header section with badge */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <Clock className="w-5 h-5 text-emerald-400" />
-          <h2 className="text-base font-semibold text-slate-100">
-            Gespeicherte Historie
-          </h2>
-          <span className="text-xs font-mono text-slate-400 ml-1">
-            ({sessions.length} {sessions.length === 1 ? 'Eintrag' : 'Einträge'})
-          </span>
-        </div>
-
-        {/* Sync indicator status */}
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          {isLoadingCloud ? (
-            <span className="flex items-center gap-1.5 text-slate-400 animate-pulse">
-              <Cloud className="w-4 h-4 text-slate-400" />
-              Lade aus Cloud...
-            </span>
-          ) : isCloudSynced ? (
-            <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-              <Cloud className="w-4 h-4 text-emerald-400" />
-              Mit Firebase synchronisiert
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 text-slate-400" title="Melde dich an, um Daten in Firebase zu sichern">
-              <Database className="w-3.5 h-3.5 text-slate-500" />
-              Lokal gesichert (Gast)
-            </span>
-          )}
-        </div>
-      </div>
+    <section className="w-full max-w-4xl mx-auto mt-6 px-4 mb-16">
 
       {/* Empty State */}
       {sessions.length === 0 ? (
@@ -61,32 +29,14 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             Noch keine Timer-Durchgänge aufgezeichnet
           </p>
           <p className="text-xs text-slate-400 mt-1 max-w-md">
-            Starte den 2-Minuten-Timer mit dem Button oder der Leertaste. Nach Ablauf startet automatisch die Stoppuhr, und beim Stoppen wird das Ergebnis hier protokolliert.
+            Starte den 2-Minuten-Timer mit dem Button oder der Leertaste. Sobald die 2 Minuten ablaufen und die Stoppuhr startet, wird der Durchgang beim Stoppen hier erfasst (vorzeitig abgebrochene Timer werden nicht gespeichert).
           </p>
         </div>
       ) : (
         /* History Table */
-        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40 backdrop-blur-sm">
+        <div className="mt-4 overflow-x-auto rounded-xl bg-slate-900/30 backdrop-blur-sm p-1">
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-medium text-xs">
-                <th className="py-3 px-4">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Datum &amp; Uhrzeit</span>
-                  </div>
-                </th>
-                <th className="py-3 px-4">2-Min. Countdown</th>
-                <th className="py-3 px-4">
-                  <span className="text-cyan-400 font-medium">Stoppuhr (Nachzeit)</span>
-                </th>
-                <th className="py-3 px-4 text-right">Gesamtzeit</th>
-                <th className="py-3 px-3 text-center w-12">
-                  <span className="sr-only">Aktionen</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono text-slate-200">
+            <tbody className="font-mono text-slate-200">
               {sessions.map((session) => (
                 <tr
                   key={session.id}
@@ -95,20 +45,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                   {/* Date & Time */}
                   <td className="py-3.5 px-4 text-slate-300 text-xs sm:text-sm whitespace-nowrap">
                     {formatDate(session.stoppedAt || session.startedAt)}
-                  </td>
-
-                  {/* 2-Min Countdown column */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
-                    {session.completedCountdown ? (
-                      <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        02:00.00 (Erreicht)
-                      </span>
-                    ) : (
-                      <span className="text-amber-400/90">
-                        {formatMinutesSecondsMillis(session.timerDurationMs)} (Vorzeitig gestoppt)
-                      </span>
-                    )}
                   </td>
 
                   {/* Stopwatch Overtime */}
@@ -120,11 +56,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     ) : (
                       <span className="text-slate-400">00:00.00</span>
                     )}
-                  </td>
-
-                  {/* Total duration */}
-                  <td className="py-3.5 px-4 text-right font-bold text-white whitespace-nowrap">
-                    {formatMinutesSecondsMillis(session.totalDurationMs)}
                   </td>
 
                   {/* Delete button */}

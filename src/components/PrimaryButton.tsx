@@ -30,26 +30,18 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-2 mt-2">
+    <div className="flex flex-col items-center justify-center mt-2">
       <button
         onClick={onClick}
         type="button"
         aria-label={`${buttonText} (auch mit Leertaste)`}
-        className={`group relative flex items-center justify-center gap-3 px-10 py-5 text-xl sm:text-2xl font-bold rounded-2xl border transition-all duration-150 transform cursor-pointer select-none shadow-xl active:scale-95 focus:outline-none focus:ring-4 ${buttonColor} ${
+        title={`${buttonText} (auch mit Leertaste)`}
+        className={`group relative flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full border transition-all duration-150 transform cursor-pointer select-none shadow-xl active:scale-95 focus:outline-none focus:ring-4 ${buttonColor} ${
           isPressedAnimation ? 'scale-95 ring-4 ring-white/50' : ''
         }`}
       >
-        <Icon className={`w-6 h-6 sm:w-7 sm:h-7 transition-transform group-hover:scale-110 ${isRunning ? 'fill-current' : ''}`} />
-        <span className="tracking-wide uppercase">{buttonText}</span>
+        <Icon className={`w-8 h-8 sm:w-10 sm:h-10 transition-transform group-hover:scale-110 ${isRunning ? 'fill-current' : ''}`} />
       </button>
-
-      {/* Keyboard hotkey hint badge */}
-      <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
-        <kbd className="px-2 py-0.5 font-mono text-[11px] bg-slate-900 border border-slate-700/60 rounded text-slate-300 shadow-inner">
-          Leertaste
-        </kbd>
-        <span>zum {isRunning ? 'Stoppen' : 'Starten'} drücken</span>
-      </div>
     </div>
   );
 };

@@ -8,6 +8,7 @@ interface TimerDialProps {
   stopwatchElapsedMs: number;
   totalElapsedMs: number;
   isTransitionPulse: boolean;
+  wasStoppedEarly?: boolean;
 }
 
 export const TimerDial: React.FC<TimerDialProps> = ({
@@ -16,6 +17,7 @@ export const TimerDial: React.FC<TimerDialProps> = ({
   stopwatchElapsedMs,
   totalElapsedMs,
   isTransitionPulse,
+  wasStoppedEarly = false,
 }) => {
   const TOTAL_COUNTDOWN_MS = 120000; // 2 minutes
 
@@ -55,10 +57,17 @@ export const TimerDial: React.FC<TimerDialProps> = ({
     statusText = 'Stoppuhr aktiv (Nachspielzeit)';
     statusBadgeClass = 'text-cyan-300 bg-cyan-950/40 border-cyan-800/50';
   } else if (phase === 'stopped') {
-    dialColorClass = 'text-slate-100';
-    strokeColorClass = '#64748B';
-    statusText = 'Durchgang beendet & gespeichert';
-    statusBadgeClass = 'text-emerald-400 bg-emerald-950/40 border-emerald-800/50';
+    if (wasStoppedEarly) {
+      dialColorClass = 'text-amber-400';
+      strokeColorClass = '#F59E0B';
+      statusText = 'Vorzeitig abgebrochen (Nicht in Statistik)';
+      statusBadgeClass = 'text-amber-300 bg-amber-950/40 border-amber-800/50';
+    } else {
+      dialColorClass = 'text-slate-100';
+      strokeColorClass = '#10B981';
+      statusText = 'Durchgang beendet & gespeichert';
+      statusBadgeClass = 'text-emerald-400 bg-emerald-950/40 border-emerald-800/50';
+    }
   }
 
   return (
@@ -125,20 +134,13 @@ export const TimerDial: React.FC<TimerDialProps> = ({
 
         {/* Center Digital Display */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-          {/* Phase Badge */}
-          <span
-            className={`text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full border mb-2 transition-all ${statusBadgeClass}`}
-          >
-            {statusText}
-          </span>
-
           {/* Primary Numeric Display */}
           <div
-            className={`font-mono text-4xl sm:text-5xl font-extrabold tracking-tight tabular-nums transition-colors duration-200 ${dialColorClass}`}
+            className={`font-mono text-5xl sm:text-6xl font-extrabold tracking-tight tabular-nums transition-colors duration-200 ${dialColorClass}`}
           >
             {phase === 'stopwatch' ? (
               <span className="flex items-center">
-                <span className="text-2xl sm:text-3xl font-normal text-cyan-500 mr-1">+</span>
+                <span className="text-3xl sm:text-4xl font-normal text-cyan-500 mr-1">+</span>
                 {formatMinutesSecondsMillis(stopwatchElapsedMs)}
               </span>
             ) : phase === 'countdown' ? (
@@ -147,26 +149,6 @@ export const TimerDial: React.FC<TimerDialProps> = ({
               formatMinutesSecondsMillis(totalElapsedMs)
             ) : (
               '02:00.00'
-            )}
-          </div>
-
-          {/* Subtext info */}
-          <div className="mt-2 text-xs font-mono text-slate-400">
-            {phase === 'countdown' && (
-              <span>Verbleibende Zeit bis Stoppuhr</span>
-            )}
-            {phase === 'stopwatch' && (
-              <span className="text-cyan-300 font-medium">
-                Gesamtzeit: {formatMinutesSecondsMillis(totalElapsedMs)}
-              </span>
-            )}
-            {phase === 'idle' && (
-              <span className="text-slate-400">2:00 Min. Timer &rarr; danach Stoppuhr</span>
-            )}
-            {phase === 'stopped' && (
-              <span className="text-emerald-400">
-                Stoppuhr: +{formatMinutesSecondsMillis(stopwatchElapsedMs)}
-              </span>
             )}
           </div>
         </div>

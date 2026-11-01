@@ -24,6 +24,7 @@ import { Header } from './components/Header';
 import { TimerDial } from './components/TimerDial';
 import { PrimaryButton } from './components/PrimaryButton';
 import { HistoryList } from './components/HistoryList';
+import { AnalyticsChart } from './components/AnalyticsChart';
 
 const LOCAL_STORAGE_KEY = 'chronoflow_saved_sessions_v1';
 const COUNTDOWN_TARGET_MS = 120000; // 2 minutes
@@ -41,6 +42,7 @@ export default function App() {
   const [totalElapsedMs, setTotalElapsedMs] = useState(0);
   const [isTransitionPulse, setIsTransitionPulse] = useState(false);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [wasStoppedEarly, setWasStoppedEarly] = useState(false);
 
   // History list
   const [sessions, setSessions] = useState<TimerSession[]>(() => {
@@ -179,6 +181,7 @@ export default function App() {
     startTimeRef.current = nowPerf;
     sessionStartDateRef.current = new Date();
 
+    setWasStoppedEarly(false);
     setCountdownRemainingMs(COUNTDOWN_TARGET_MS);
     setStopwatchElapsedMs(0);
     setTotalElapsedMs(0);
@@ -196,21 +199,21 @@ export default function App() {
     const stopDate = new Date();
     const startDate = sessionStartDateRef.current || new Date(stopDate.getTime() - 1000);
 
-    let finalTimerDurationMs = 0;
-    let finalStopwatchDurationMs = 0;
-    let completedCountdown = false;
-
+    // If stopped during the countdown timer: do NOT record in statistics or Firebase!
     if (currentPhase === 'countdown') {
-      finalTimerDurationMs = Math.min(COUNTDOWN_TARGET_MS, Math.round(nowPerf - startTimeRef.current));
-      finalStopwatchDurationMs = 0;
-      completedCountdown = false;
-    } else {
-      // Was in stopwatch phase
-      finalTimerDurationMs = COUNTDOWN_TARGET_MS;
-      finalStopwatchDurationMs = Math.max(0, Math.round(nowPerf - stopwatchStartRef.current));
-      completedCountdown = true;
+      const elapsed = Math.min(COUNTDOWN_TARGET_MS, Math.round(nowPerf - startTimeRef.current));
+      currentPhaseRef.current = 'stopped';
+      setPhase('stopped');
+      setWasStoppedEarly(true);
+      setTotalElapsedMs(elapsed);
+      setStopwatchElapsedMs(0);
+      return;
     }
 
+    // Was in stopwatch phase (2-minute countdown was fully completed)
+    setWasStoppedEarly(false);
+    const finalTimerDurationMs = COUNTDOWN_TARGET_MS;
+    const finalStopwatchDurationMs = Math.max(0, Math.round(nowPerf - stopwatchStartRef.current));
     const finalTotalDurationMs = finalTimerDurationMs + finalStopwatchDurationMs;
 
     // Create session entity
@@ -223,7 +226,7 @@ export default function App() {
       timerDurationMs: finalTimerDurationMs,
       stopwatchDurationMs: finalStopwatchDurationMs,
       totalDurationMs: finalTotalDurationMs,
-      completedCountdown,
+      completedCountdown: true,
       createdAt: stopDate.toISOString(),
     };
 
@@ -339,16 +342,21 @@ export default function App() {
     }
   };
 
+  // Only sessions that finished the full 2-minute timer and entered stopwatch are included in statistics
+  const statisticsSessions = React.useMemo(() => {
+    return sessions.filter((s) => s.completedCountdown === true && s.timerDurationMs >= COUNTDOWN_TARGET_MS);
+  }, [sessions]);
+
   // 12. Export to JSON
   const handleExport = () => {
-    if (sessions.length === 0) return;
+    if (statisticsSessions.length === 0) return;
     const nowStr = new Date().toISOString().split('T')[0];
     const exportPayload = {
       app: 'ChronoFlow',
       exportedAt: new Date().toISOString(),
       user: user ? { uid: user.uid, email: user.email } : 'guest',
-      totalSessions: sessions.length,
-      sessions: sessions,
+      totalSessions: statisticsSessions.length,
+      sessions: statisticsSessions,
     };
     downloadJsonFile(exportPayload, `chronoflow_historie_${nowStr}.json`);
   };
@@ -361,7 +369,7 @@ export default function App() {
         onLogin={handleGoogleLogin}
         onLogout={handleGoogleLogout}
         onExport={handleExport}
-        historyCount={sessions.length}
+        historyCount={statisticsSessions.length}
         isAuthenticating={isAuthenticating}
       />
 
@@ -374,6 +382,7 @@ export default function App() {
           stopwatchElapsedMs={stopwatchElapsedMs}
           totalElapsedMs={totalElapsedMs}
           isTransitionPulse={isTransitionPulse}
+          wasStoppedEarly={wasStoppedEarly}
         />
 
         {/* The ONLY Primary Button for Timer & Stopwatch */}
@@ -383,19 +392,17 @@ export default function App() {
           isPressedAnimation={isSpacePressed}
         />
 
+        {/* Analytics Chart with Weekly Averages, Max and Yearly View */}
+        <AnalyticsChart sessions={statisticsSessions} />
+
         {/* History Table with Dates, Countdown, and Stopwatch */}
         <HistoryList
-          sessions={sessions}
+          sessions={statisticsSessions}
           onDeleteSession={handleDeleteSession}
           isCloudSynced={!!user}
           isLoadingCloud={isLoadingCloud}
         />
       </main>
-
-      {/* Footer with clean copyright */}
-      <footer className="py-4 border-t border-slate-900 text-center text-xs text-slate-400">
-        ChronoFlow &middot; 2-Minuten Timer &amp; Stoppuhr mit Ein-Knopf-Steuerung
-      </footer>
     </div>
   );
 }
