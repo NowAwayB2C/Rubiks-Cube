@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "Session": {
+      "title": "Timer Session",
+      "description": "A completed or stopped timer session recording countdown and stopwatch durations.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "startedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "stoppedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "timerDurationMs": {
+          "type": "number"
+        },
+        "stopwatchDurationMs": {
+          "type": "number"
+        },
+        "totalDurationMs": {
+          "type": "number"
+        },
+        "completedCountdown": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "startedAt",
+        "stoppedAt",
+        "timerDurationMs",
+        "stopwatchDurationMs",
+        "totalDurationMs",
+        "completedCountdown"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": "Session",
+      "description": "User's personal timer and stopwatch session history entries."
+    }
+  }
+}

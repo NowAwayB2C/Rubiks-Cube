@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll([
+        'id',
+        'userId',
+        'startedAt',
+        'stoppedAt',
+        'timerDurationMs',
+        'stopwatchDurationMs',
+        'totalDurationMs',
+        'completedCountdown'
+      ]) &&
+      data.keys().hasOnly([
+        'id',
+        'userId',
+        'startedAt',
+        'stoppedAt',
+        'timerDurationMs',
+        'stopwatchDurationMs',
+        'totalDurationMs',
+        'completedCountdown',
+        'createdAt'
+      ]) &&
+      data.userId == request.auth.uid &&
+      data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+      data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+      data.startedAt is string && data.startedAt.size() <= 64 &&
+      data.stoppedAt is string && data.stoppedAt.size() <= 64 &&
+      data.timerDurationMs is number && data.timerDurationMs >= 0 &&
+      data.stopwatchDurationMs is number && data.stopwatchDurationMs >= 0 &&
+      data.totalDurationMs is number && data.totalDurationMs >= 0 &&
+      data.completedCountdown is bool &&
+      (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64));
+    }
+
+    match /users/{userId}/sessions/{sessionId} {
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId);
+      allow list: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId) && isValidSession(incoming());
+      allow update: if false; // Sessions are immutable event logs
+      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(sessionId);
+    }
+  }
+}

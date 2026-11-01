@@ -1,0 +1,6 @@
+{
+  "name": "ChronoFlow",
+  "description": "Präzisions-Timer mit 2-Minuten-Countdown, automatischer Stoppuhr, Ein-Knopf- & Leertasten-Bedienung, Firebase-Synchronisation und JSON-Export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
