@@ -192,59 +192,56 @@ export default function App() {
 
   // 4. Stop RAF loop helper
   const cancelTimerLoop = useCallback(() => {
-    if (rafRef.current) {
+    if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
   }, []);
 
-  // 5. Timer update tick
+  // 5. The wall clock is the source of truth. RAF only redraws the display;
+  // browser throttling in background tabs can therefore never pause the timer.
   const tick = useCallback(() => {
-    const now = performance.now();
+    const activePhase = currentPhaseRef.current;
+    if (activePhase !== 'countdown' && activePhase !== 'stopwatch') {
+      rafRef.current = null;
+      return;
+    }
 
-    if (currentPhaseRef.current === 'countdown') {
-      const elapsed = now - startTimeRef.current;
-      const remaining = Math.max(0, COUNTDOWN_TARGET_MS - elapsed);
+    const elapsed = Math.max(0, Date.now() - startTimeRef.current);
+    const remaining = Math.max(0, COUNTDOWN_TARGET_MS - elapsed);
 
-      setCountdownRemainingMs(remaining);
-      setTotalElapsedMs(elapsed);
+    setCountdownRemainingMs(remaining);
+    setTotalElapsedMs(elapsed);
 
-      // AUTOMATIC TRANSITION TO STOPWATCH AT 2 MINUTES
-      if (remaining <= 0) {
+    if (elapsed >= COUNTDOWN_TARGET_MS) {
+      if (activePhase === 'countdown') {
         currentPhaseRef.current = 'stopwatch';
         setPhase('stopwatch');
-        setCountdownRemainingMs(0);
-        stopwatchStartRef.current = now;
-
-        // Visual transition impulse
         setIsTransitionPulse(true);
-        setTimeout(() => setIsTransitionPulse(false), 1400);
-
-        rafRef.current = requestAnimationFrame(tick);
-        return;
+        window.setTimeout(() => setIsTransitionPulse(false), 1400);
       }
 
-      rafRef.current = requestAnimationFrame(tick);
-    } else if (currentPhaseRef.current === 'stopwatch') {
-      const swElapsed = now - stopwatchStartRef.current;
-      setStopwatchElapsedMs(swElapsed);
-      setTotalElapsedMs(COUNTDOWN_TARGET_MS + swElapsed);
-
-      rafRef.current = requestAnimationFrame(tick);
+      // Count all time since the exact two-minute boundary, including time
+      // spent with this tab hidden or the browser temporarily suspended.
+      setStopwatchElapsedMs(elapsed - COUNTDOWN_TARGET_MS);
     }
+
+    rafRef.current = requestAnimationFrame(tick);
   }, []);
 
   // 6. Start Timer action
   const handleStartTimer = useCallback(() => {
     cancelTimerLoop();
-    const nowPerf = performance.now();
-    startTimeRef.current = nowPerf;
-    sessionStartDateRef.current = new Date();
+    const startedAt = Date.now();
+    startTimeRef.current = startedAt;
+    stopwatchStartRef.current = startedAt + COUNTDOWN_TARGET_MS;
+    sessionStartDateRef.current = new Date(startedAt);
 
     setWasStoppedEarly(false);
     setCountdownRemainingMs(COUNTDOWN_TARGET_MS);
     setStopwatchElapsedMs(0);
     setTotalElapsedMs(0);
+    setIsTransitionPulse(false);
     currentPhaseRef.current = 'countdown';
     setPhase('countdown');
 
@@ -254,27 +251,31 @@ export default function App() {
   // 7. Stop Timer action and log session
   const handleStopTimer = useCallback(async () => {
     cancelTimerLoop();
-    const currentPhase = currentPhaseRef.current;
-    const nowPerf = performance.now();
     const stopDate = new Date();
-    const startDate = sessionStartDateRef.current || new Date(stopDate.getTime() - 1000);
+    const startDate = sessionStartDateRef.current || new Date(startTimeRef.current || stopDate.getTime() - 1000);
+    // Recalculate from the wall clock at click time. This also handles a click
+    // immediately after returning from a background tab, before the next RAF.
+    const elapsedSinceStart = Math.max(0, Math.round(stopDate.getTime() - startTimeRef.current));
 
-    // If stopped during the countdown timer: do NOT record in statistics or Firebase!
-    if (currentPhase === 'countdown') {
-      const elapsed = Math.min(COUNTDOWN_TARGET_MS, Math.round(nowPerf - startTimeRef.current));
+    // A stop before the exact two-minute boundary is not recorded.
+    if (elapsedSinceStart < COUNTDOWN_TARGET_MS) {
       currentPhaseRef.current = 'stopped';
       setPhase('stopped');
       setWasStoppedEarly(true);
-      setTotalElapsedMs(elapsed);
+      setCountdownRemainingMs(COUNTDOWN_TARGET_MS - elapsedSinceStart);
+      setTotalElapsedMs(elapsedSinceStart);
       setStopwatchElapsedMs(0);
       return;
     }
 
-    // Was in stopwatch phase (2-minute countdown was fully completed)
+    // The two-minute countdown has completed, even if the tab was hidden.
+    currentPhaseRef.current = 'stopped';
+    setPhase('stopped');
+    setCountdownRemainingMs(0);
     setWasStoppedEarly(false);
     const finalTimerDurationMs = COUNTDOWN_TARGET_MS;
-    const finalStopwatchDurationMs = Math.max(0, Math.round(nowPerf - stopwatchStartRef.current));
-    const finalTotalDurationMs = finalTimerDurationMs + finalStopwatchDurationMs;
+    const finalStopwatchDurationMs = elapsedSinceStart - COUNTDOWN_TARGET_MS;
+    const finalTotalDurationMs = elapsedSinceStart;
 
     // Create session entity
     const cleanId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -347,10 +348,24 @@ export default function App() {
     };
   }, [handlePrimaryAction]);
 
-  // Clean up RAF on unmount
+  // Catch up immediately when the tab becomes visible or is restored from
+  // the browser back-forward cache. Do not wait for a throttled RAF callback.
   useEffect(() => {
-    return () => cancelTimerLoop();
-  }, [cancelTimerLoop]);
+    const syncAfterBackground = () => {
+      if (document.visibilityState !== 'visible') return;
+      cancelTimerLoop();
+      tick();
+    };
+
+    document.addEventListener('visibilitychange', syncAfterBackground);
+    window.addEventListener('pageshow', syncAfterBackground);
+
+    return () => {
+      document.removeEventListener('visibilitychange', syncAfterBackground);
+      window.removeEventListener('pageshow', syncAfterBackground);
+      cancelTimerLoop();
+    };
+  }, [cancelTimerLoop, tick]);
 
   // 10. Email/password sign-in is handled by AuthDialog.
   const handleLogin = () => setIsAuthDialogOpen(true);
