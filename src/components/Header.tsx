@@ -49,8 +49,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onLogin}
             disabled={isAuthenticating}
-            title="Mit Google anmelden"
-            aria-label="Mit Google anmelden"
+            title="Anmelden"
+            aria-label="Anmelden"
             className="p-2.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/30 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shrink-0 shadow-md shadow-emerald-950/40"
           >
             <LogIn className="w-4 h-4" />
