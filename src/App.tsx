@@ -1,23 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { User } from 'firebase/auth';
-import { onAuthStateChanged } from 'firebase/auth';
-import {
-  collection,
-  doc,
-  setDoc,
-  deleteDoc,
-  onSnapshot,
-} from 'firebase/firestore';
-import {
-  auth,
-  db,
-  googleProvider,
-  signInWithPopup,
-  signOut,
-  handleFirestoreError,
-  testConnection,
-  OperationType,
-} from './firebase';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import type { TimerPhase, TimerSession } from './types';
 import { downloadJsonFile } from './utils/formatTime';
 import { Header } from './components/Header';
@@ -28,6 +11,46 @@ import { AnalyticsChart } from './components/AnalyticsChart';
 
 const LOCAL_STORAGE_KEY = 'chronoflow_saved_sessions_v1';
 const COUNTDOWN_TARGET_MS = 120000; // 2 minutes
+
+type SupabaseSessionRow = {
+  id: string;
+  user_id: string;
+  started_at: string;
+  stopped_at: string;
+  timer_duration_ms: number | string;
+  stopwatch_duration_ms: number | string;
+  total_duration_ms: number | string;
+  completed_countdown: boolean;
+  created_at: string;
+};
+
+function toSupabaseSessionRow(session: TimerSession, userId: string) {
+  return {
+    id: session.id,
+    user_id: userId,
+    started_at: session.startedAt,
+    stopped_at: session.stoppedAt,
+    timer_duration_ms: session.timerDurationMs,
+    stopwatch_duration_ms: session.stopwatchDurationMs,
+    total_duration_ms: session.totalDurationMs,
+    completed_countdown: session.completedCountdown,
+    created_at: session.createdAt || session.stoppedAt || new Date().toISOString(),
+  };
+}
+
+function fromSupabaseSessionRow(row: SupabaseSessionRow): TimerSession {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    startedAt: row.started_at,
+    stoppedAt: row.stopped_at,
+    timerDurationMs: Number(row.timer_duration_ms),
+    stopwatchDurationMs: Number(row.stopwatch_duration_ms),
+    totalDurationMs: Number(row.total_duration_ms),
+    completedCountdown: row.completed_countdown,
+    createdAt: row.created_at,
+  };
+}
 
 export default function App() {
   // Authentication state
@@ -64,59 +87,94 @@ export default function App() {
   // Keep phase ref in sync for keydown and RAF loop
   currentPhaseRef.current = phase;
 
-  // 1. Initial connection test and auth state listener
+  // 1. Supabase authentication state
   useEffect(() => {
-    testConnection();
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Realtime Firestore sync when user is authenticated
+  // Keep the latest local history available for migration after sign-in.
+  const sessionsRef = useRef<TimerSession[]>(sessions);
   useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
+
+  // 2. Realtime Supabase sync for the authenticated user
+  useEffect(() => {
+    let active = true;
+
     if (!user) {
-      // Revert to local storage when signed out
       try {
         const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (cached) setSessions(JSON.parse(cached));
       } catch (err) {
         console.error('Failed reading localStorage', err);
       }
+      setIsLoadingCloud(false);
       return;
     }
 
     setIsLoadingCloud(true);
-    const sessionsColPath = `users/${user.uid}/sessions`;
-    const sessionsColRef = collection(db, 'users', user.uid, 'sessions');
 
-    const unsubscribe = onSnapshot(
-      sessionsColRef,
-      (snapshot) => {
-        const cloudSessions: TimerSession[] = [];
-        snapshot.forEach((docSnap) => {
-          cloudSessions.push(docSnap.data() as TimerSession);
-        });
+    const refreshCloudSessions = async () => {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        // Sort descending by createdAt or stoppedAt
-        cloudSessions.sort((a, b) => {
-          const timeA = new Date(a.stoppedAt || a.startedAt).getTime();
-          const timeB = new Date(b.stoppedAt || b.startedAt).getTime();
-          return timeB - timeA;
-        });
-
-        setSessions(cloudSessions);
+      if (!active) return;
+      if (error) {
+        console.error('Supabase session read failed:', error);
         setIsLoadingCloud(false);
-      },
-      (error) => {
-        setIsLoadingCloud(false);
-        handleFirestoreError(error, OperationType.GET, sessionsColPath);
+        return;
       }
-    );
 
-    return () => unsubscribe();
+      setSessions((data ?? []).map((row) => fromSupabaseSessionRow(row as SupabaseSessionRow)));
+      setIsLoadingCloud(false);
+    };
+
+    const migrateGuestSessionsAndLoad = async () => {
+      try {
+        const guestSessions = sessionsRef.current.filter(
+          (session) => !session.userId || session.userId === 'guest'
+        );
+
+        if (guestSessions.length > 0) {
+          const { error } = await supabase
+            .from('sessions')
+            .upsert(
+              guestSessions.map((session) => toSupabaseSessionRow(session, user.id)),
+              { onConflict: 'user_id,id', ignoreDuplicates: true }
+            );
+
+          if (error) throw error;
+        }
+
+        await refreshCloudSessions();
+      } catch (error) {
+        console.error('Supabase session sync failed:', error);
+        if (active) setIsLoadingCloud(false);
+      }
+    };
+
+    const channel = supabase
+      .channel(`sessions:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions', filter: `user_id=eq.${user.id}` },
+        () => { void refreshCloudSessions(); }
+      )
+      .subscribe();
+
+    void migrateGuestSessionsAndLoad();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // 3. Save local sessions to localStorage when not logged in
@@ -220,7 +278,7 @@ export default function App() {
     const cleanId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newSession: TimerSession = {
       id: cleanId,
-      userId: user ? user.uid : 'guest',
+      userId: user ? user.id : 'guest',
       startedAt: startDate.toISOString(),
       stoppedAt: stopDate.toISOString(),
       timerDurationMs: finalTimerDurationMs,
@@ -235,14 +293,13 @@ export default function App() {
     setTotalElapsedMs(finalTotalDurationMs);
     setStopwatchElapsedMs(finalStopwatchDurationMs);
 
-    // Save locally or to Firestore
+    // Save locally for guests or in Supabase for authenticated users.
     if (user) {
-      try {
-        const docRef = doc(db, 'users', user.uid, 'sessions', newSession.id);
-        await setDoc(docRef, newSession);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/sessions/${newSession.id}`);
-      }
+      const { error } = await supabase
+        .from('sessions')
+        .insert(toSupabaseSessionRow(newSession, user.id));
+
+      if (error) console.error('Supabase session write failed:', error);
     } else {
       setSessions((prev) => [newSession, ...prev]);
     }
@@ -293,26 +350,17 @@ export default function App() {
     return () => cancelTimerLoop();
   }, [cancelTimerLoop]);
 
-  // 10. Google Auth Sign-In / Sign-Out
+  // 10. Google sign-in via Supabase Auth / Sign-Out
   const handleGoogleLogin = async () => {
     setIsAuthenticating(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      // Migrate any guest sessions to the newly signed-in user
-      if (result.user && sessions.length > 0) {
-        const guestSessions = sessions.filter((s) => !s.userId || s.userId === 'guest');
-        for (const guestSession of guestSessions) {
-          try {
-            const updated: TimerSession = { ...guestSession, userId: result.user.uid };
-            await setDoc(doc(db, 'users', result.user.uid, 'sessions', updated.id), updated);
-          } catch {
-            // Ignore duplicate/sync collisions
-          }
-        }
-      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) throw error;
     } catch (error) {
       console.error('Google Sign-In failed', error);
-    } finally {
       setIsAuthenticating(false);
     }
   };
@@ -320,7 +368,8 @@ export default function App() {
   const handleGoogleLogout = async () => {
     setIsAuthenticating(true);
     try {
-      await signOut(auth);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error) {
       console.error('Sign-Out failed', error);
     } finally {
@@ -331,12 +380,13 @@ export default function App() {
   // 11. Delete session entry
   const handleDeleteSession = async (sessionId: string) => {
     if (user) {
-      try {
-        const docRef = doc(db, 'users', user.uid, 'sessions', sessionId);
-        await deleteDoc(docRef);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/sessions/${sessionId}`);
-      }
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+
+      if (error) console.error('Supabase session delete failed:', error);
     } else {
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     }
@@ -354,7 +404,7 @@ export default function App() {
     const exportPayload = {
       app: 'ChronoFlow',
       exportedAt: new Date().toISOString(),
-      user: user ? { uid: user.uid, email: user.email } : 'guest',
+      user: user ? { uid: user.id, email: user.email } : 'guest',
       totalSessions: statisticsSessions.length,
       sessions: statisticsSessions,
     };

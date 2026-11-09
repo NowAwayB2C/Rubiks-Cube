@@ -1,6 +1,6 @@
 import React from 'react';
 import { Download, LogIn, LogOut } from 'lucide-react';
-import type { User } from 'firebase/auth';
+import type { User } from '@supabase/supabase-js';
 
 interface HeaderProps {
   user: User | null;
@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onLogout}
             disabled={isAuthenticating}
-            title={`Angemeldet als ${user.displayName || user.email || 'Benutzer'} (Klicken zum Abmelden)`}
+            title={`Angemeldet als ${user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Benutzer'} (Klicken zum Abmelden)`}
             aria-label="Abmelden"
             className="p-2.5 text-xs font-medium text-red-300 bg-red-950/30 hover:bg-red-900/40 border border-red-800/40 rounded-lg transition-colors cursor-pointer disabled:opacity-50 shrink-0 shadow-sm"
           >
