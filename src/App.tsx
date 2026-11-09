@@ -7,6 +7,7 @@ import { Header } from './components/Header';
 import { TimerDial } from './components/TimerDial';
 import { PrimaryButton } from './components/PrimaryButton';
 import { HistoryList } from './components/HistoryList';
+import { AuthDialog } from './components/AuthDialog';
 import { AnalyticsChart } from './components/AnalyticsChart';
 
 const LOCAL_STORAGE_KEY = 'chronoflow_saved_sessions_v1';
@@ -56,6 +57,7 @@ export default function App() {
   // Authentication state
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isLoadingCloud, setIsLoadingCloud] = useState(false);
 
   // Timer states
@@ -350,20 +352,8 @@ export default function App() {
     return () => cancelTimerLoop();
   }, [cancelTimerLoop]);
 
-  // 10. Google sign-in via Supabase Auth / Sign-Out
-  const handleGoogleLogin = async () => {
-    setIsAuthenticating(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin },
-      });
-      if (error) throw error;
-    } catch (error) {
-      console.error('Google Sign-In failed', error);
-      setIsAuthenticating(false);
-    }
-  };
+  // 10. Email/password sign-in is handled by AuthDialog.
+  const handleLogin = () => setIsAuthDialogOpen(true);
 
   const handleGoogleLogout = async () => {
     setIsAuthenticating(true);
@@ -416,7 +406,7 @@ export default function App() {
       {/* Top Bar with dynamic auth & JSON export */}
       <Header
         user={user}
-        onLogin={handleGoogleLogin}
+        onLogin={handleLogin}
         onLogout={handleGoogleLogout}
         onExport={handleExport}
         historyCount={statisticsSessions.length}
@@ -453,6 +443,7 @@ export default function App() {
           isLoadingCloud={isLoadingCloud}
         />
       </main>
+      {isAuthDialogOpen && <AuthDialog onClose={() => setIsAuthDialogOpen(false)} />}
     </div>
   );
 }
