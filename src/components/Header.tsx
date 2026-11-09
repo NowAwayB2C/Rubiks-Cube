@@ -23,16 +23,16 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
       {/* Zone 3: Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        {/* Export / Download Button */}
-        <button
-          onClick={onExport}
-          disabled={historyCount === 0}
-          title={historyCount === 0 ? 'Noch keine Historie zum Exportieren' : `${historyCount} Einträge als JSON herunterladen`}
-          aria-label="Exportieren (.json)"
-          className="p-2.5 text-xs font-medium text-slate-200 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-slate-900 border border-slate-800 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed shrink-0 shadow-sm"
-        >
-          <Download className="w-4 h-4 text-emerald-400" />
-        </button>
+        {historyCount > 0 && (
+          <button
+            onClick={onExport}
+            title={`${historyCount} Einträge als JSON herunterladen`}
+            aria-label="Exportieren (.json)"
+            className="p-2.5 text-xs font-medium text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors cursor-pointer shrink-0 shadow-sm"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+          </button>
+        )}
 
         {/* Dynamic Auth Button: Transforms from Login to Logout */}
         {user ? (
