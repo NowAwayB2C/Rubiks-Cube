@@ -112,7 +112,7 @@ export const TimerDial: React.FC<TimerDialProps> = ({
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="transition-[stroke-dashoffset] duration-100 ease-linear"
+            className="will-change-[stroke-dashoffset]"
             fill="transparent"
           />
 
@@ -125,8 +125,8 @@ export const TimerDial: React.FC<TimerDialProps> = ({
               stroke="#06B6D4"
               strokeWidth={3}
               strokeDasharray="6 8"
-              className="animate-spin origin-center text-cyan-400 opacity-70"
-              style={{ animationDuration: '8s' }}
+              className="text-cyan-400 opacity-70"
+              transform={`rotate(${((stopwatchElapsedMs % 8000) / 8000) * 360} ${size / 2} ${size / 2})`}
               fill="transparent"
             />
           )}
