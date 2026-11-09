@@ -24,7 +24,13 @@ export function AuthDialog({ onClose }: AuthDialogProps) {
       const { data, error } = mode === 'register'
         ? await supabase.auth.signUp({
             ...credentials,
-            options: { emailRedirectTo: window.location.origin },
+            options: {
+              // Always send confirmation emails back to the live app, even when
+              // registration was started from a local development server.
+              emailRedirectTo:
+                import.meta.env.VITE_AUTH_REDIRECT_URL ||
+                'https://chronoflow-web.onrender.com',
+            },
           })
         : await supabase.auth.signInWithPassword(credentials);
       if (error) throw error;
