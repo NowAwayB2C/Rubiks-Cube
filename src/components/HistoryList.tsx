@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import type { TimerSession } from '../types';
 import { formatDate, formatMinutesSecondsMillis } from '../utils/formatTime';
 
@@ -16,25 +16,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   isCloudSynced,
   isLoadingCloud,
 }) => {
+  if (sessions.length === 0) return null;
+
   return (
     <section className="w-full max-w-4xl mx-auto mt-6 px-4 mb-16">
 
-      {/* Empty State */}
-      {sessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl border border-dashed border-slate-800 bg-slate-900/20 mt-4">
-          <div className="w-12 h-12 rounded-full bg-slate-800/60 flex items-center justify-center text-slate-400 mb-3">
-            <Clock className="w-6 h-6" />
-          </div>
-          <p className="text-sm font-medium text-slate-300">
-            Noch keine Timer-Durchgänge aufgezeichnet
-          </p>
-          <p className="text-xs text-slate-400 mt-1 max-w-md">
-            Starte den 2-Minuten-Timer mit dem Button oder der Leertaste. Sobald die 2 Minuten ablaufen und die Stoppuhr startet, wird der Durchgang beim Stoppen hier erfasst (vorzeitig abgebrochene Timer werden nicht gespeichert).
-          </p>
-        </div>
-      ) : (
-        /* History Table */
-        <div className="mt-4 overflow-x-auto rounded-xl bg-slate-900/30 backdrop-blur-sm p-1">
+      <div className="mt-4 overflow-x-auto rounded-xl bg-slate-900/30 backdrop-blur-sm p-1">
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <tbody className="font-mono text-slate-200">
               {sessions.map((session) => (
@@ -72,8 +59,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+      </div>
     </section>
   );
 };
