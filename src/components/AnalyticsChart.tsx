@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { TrendingUp } from 'lucide-react';
 import type { TimerSession } from '../types';
 import { formatMinutesSecondsMillis } from '../utils/formatTime';
 
@@ -51,6 +50,7 @@ function getYearAndMonth(date: Date): { key: string; label: string; dateSort: nu
 type ViewMode = 'weekly' | 'max' | 'yearly';
 
 export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ sessions }) => {
+  if (sessions.length === 0) return null;
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -211,15 +211,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ sessions }) => {
 
       {/* Main Graph Card */}
       <div className="mt-4 rounded-xl bg-slate-900/30 backdrop-blur-sm p-4 relative overflow-hidden">
-        {chartData.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-slate-400">
-            <TrendingUp className="w-10 h-10 text-slate-600 mb-2 stroke-1" />
-            <p className="text-sm font-medium text-slate-300">
-              Noch nicht genügend Daten für den Verlaufsgraphen vorhanden
-            </p>
-          </div>
-        ) : (
-          <div className="w-full">
+        <div className="w-full">
             {/* Responsive SVG Canvas */}
             <div className="w-full overflow-x-auto">
               <svg
@@ -339,8 +331,7 @@ export const AnalyticsChart: React.FC<AnalyticsChartProps> = ({ sessions }) => {
                 })}
               </svg>
             </div>
-          </div>
-        )}
+        </div>
       </div>
     </section>
   );
