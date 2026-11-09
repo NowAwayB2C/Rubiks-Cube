@@ -12,6 +12,10 @@ export function AuthDialog({ onClose }: AuthDialogProps) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showResend, setShowResend] = useState(false);
+
+  const emailRedirectTo =
+    import.meta.env.VITE_AUTH_REDIRECT_URL || 'https://chronoflow-web.onrender.com';
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -27,9 +31,7 @@ export function AuthDialog({ onClose }: AuthDialogProps) {
             options: {
               // Always send confirmation emails back to the live app, even when
               // registration was started from a local development server.
-              emailRedirectTo:
-                import.meta.env.VITE_AUTH_REDIRECT_URL ||
-                'https://chronoflow-web.onrender.com',
+              emailRedirectTo,
             },
           })
         : await supabase.auth.signInWithPassword(credentials);
@@ -37,12 +39,37 @@ export function AuthDialog({ onClose }: AuthDialogProps) {
       if (data.session) {
         onClose();
       } else if (mode === 'register') {
+        setShowResend(true);
         setMessage('Konto angelegt. Bitte bestätige deine E-Mail über den zugesendeten Link und melde dich danach an.');
       } else {
-        setErrorMessage('Anmeldung nicht abgeschlossen. Bitte bestätige gegebenenfalls deine E-Mail.');
+        const text = error instanceof Error ? error.message : 'Anmeldung fehlgeschlagen.';
+        setErrorMessage(text);
+        if (/email not confirmed|not confirmed/i.test(text)) setShowResend(true);
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Anmeldung fehlgeschlagen.');
+      const text = error instanceof Error ? error.message : 'Anmeldung fehlgeschlagen.';
+      setErrorMessage(text);
+      if (/email not confirmed|not confirmed/i.test(text)) setShowResend(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resendConfirmation = async () => {
+    if (!email.trim() || busy) return;
+    setBusy(true);
+    setErrorMessage('');
+    setMessage('');
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: { emailRedirectTo },
+      });
+      if (error) throw error;
+      setMessage('Ein neuer Bestätigungslink wurde angefordert. Prüfe deinen Posteingang.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Der Bestätigungslink konnte nicht erneut gesendet werden.');
     } finally {
       setBusy(false);
     }
@@ -62,9 +89,14 @@ export function AuthDialog({ onClose }: AuthDialogProps) {
           <input id="auth-password" type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} minLength={6} required value={password} onChange={(event) => setPassword(event.target.value)} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-emerald-500" />
           {errorMessage && <p role="alert" className="text-sm text-red-400">{errorMessage}</p>}
           {message && <p role="status" className="text-sm text-emerald-300">{message}</p>}
+          {showResend && (
+            <button type="button" onClick={resendConfirmation} disabled={busy || !email.trim()} className="text-left text-sm text-emerald-400 hover:text-emerald-300 disabled:opacity-50">
+              Bestätigungslink erneut senden
+            </button>
+          )}
           <button type="submit" disabled={busy} className="mt-2 rounded-lg bg-emerald-600 px-4 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-50">{busy ? 'Bitte warten …' : mode === 'register' ? 'Registrieren' : 'Anmelden'}</button>
         </form>
-        <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErrorMessage(''); setMessage(''); }} className="mt-4 text-sm text-emerald-400 hover:text-emerald-300">{mode === 'login' ? 'Noch kein Konto? Registrieren' : 'Bereits ein Konto? Anmelden'}</button>
+        <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErrorMessage(''); setMessage(''); setShowResend(false); }} className="mt-4 text-sm text-emerald-400 hover:text-emerald-300">{mode === 'login' ? 'Noch kein Konto? Registrieren' : 'Bereits ein Konto? Anmelden'}</button>
       </div>
     </div>
   );
