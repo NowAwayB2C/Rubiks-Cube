@@ -82,7 +82,6 @@ export default function App() {
   // Timing references for high-accuracy animation loop
   const rafRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
-  const stopwatchStartRef = useRef<number>(0);
   const currentPhaseRef = useRef<TimerPhase>('idle');
   const sessionStartDateRef = useRef<Date | null>(null);
 
@@ -234,7 +233,6 @@ export default function App() {
     cancelTimerLoop();
     const startedAt = Date.now();
     startTimeRef.current = startedAt;
-    stopwatchStartRef.current = startedAt + COUNTDOWN_TARGET_MS;
     sessionStartDateRef.current = new Date(startedAt);
 
     setWasStoppedEarly(false);
