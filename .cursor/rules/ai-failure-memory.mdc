@@ -1,0 +1,16 @@
+---
+description: Evidence-before-code workflow and shared project failure memory
+globs:
+alwaysApply: true
+---
+
+Before editing code, configuration, tests or deployment:
+- Read /AGENTS.md, /docs/AI/GLOBAL_FAILURES.md and /docs/AI/PROJECT_FAILURES.md.
+- Read any canonical project-specific incident register referenced by those files.
+- Inspect the live branch/commit, relevant source, configuration metadata and logs.
+- Identify the failing execution stage and separate confirmed evidence from hypotheses.
+- Add safe diagnostics if the true provider/runtime error is missing; never log secrets or sensitive payloads.
+- Do not repeat an ineffective fix or modify an already-passed layer without new evidence.
+- Verify the deployed commit and reproduce the original user workflow. A green build alone is not end-to-end proof.
+- Append project incidents separately from generalized, anonymized cross-project lessons.
+Preserve all existing repository-specific instructions, branch/PR rules, and user constraints. If the required knowledge files are unavailable, say so rather than pretending to have read them.

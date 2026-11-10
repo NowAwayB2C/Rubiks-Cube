@@ -1,0 +1,3 @@
+# Claude Code instructions
+
+Read AGENTS.md before work. Then read docs/AI/GLOBAL_FAILURES.md and docs/AI/PROJECT_FAILURES.md and any canonical project incident register referenced there. Apply evidence-before-code: identify the failing layer from source/logs/configuration before editing, distinguish confirmed facts from hypotheses, avoid repeating ineffective changes without new evidence, and verify the original workflow on the actual runtime/deployment. Append project incidents and generalized lessons to their separate registers. Preserve all existing project-specific rules and never commit secrets.
