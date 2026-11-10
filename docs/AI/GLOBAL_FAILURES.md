@@ -62,3 +62,13 @@ Every project incident must record:
 - A generalized cross-project lesson here only when it is reusable beyond the originating project.
 
 Never store credentials, private keys, session tokens, passwords, full bank data, or unnecessary personal data in Git. Do not invent missing trace details. Keep GitHub Actions/builds/tests proportionate; avoid unnecessary workflow runs.
+
+## Mandatory pull-request learning gate
+
+Every pull request must append one uniquely identified review record to `docs/AI/LEARNING_LOG.md`, even when no defect or new reusable lesson was found. The record must state that the global and project registers were reviewed, whether a project incident was added, whether a cross-project lesson was added, what verification actually ran, and what remains unresolved.
+
+The PR template and `.github/workflows/ai-failure-memory-gate.yml` validate this. The required status check is named **AI failure-memory review**. Repository administrators must require that check on the default branch and require pull requests; otherwise the workflow reports failures but GitHub does not block merging. Do not invent incidents to satisfy the gate: use `NONE` when the review found none.
+
+When a new project incident is found, append it to `docs/AI/PROJECT_FAILURES.md` (or the canonical register named there). When a reusable cross-project lesson is found, append it to `docs/AI/GLOBAL_FAILURES.md` and synchronize the exact updated file to every registered repository, then verify identical content.
+
+For every new repository created or adopted for this user, run `docs/AI/NEW_REPOSITORY_BOOTSTRAP.md` before the first code change.
