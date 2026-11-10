@@ -29,3 +29,12 @@ Every pull request must add one new review entry. Do not rewrite or delete older
 - New cross-project lesson: NONE
 - Verification: The shared global register was copied from THE-INTERNET main; this PR synchronizes an already-approved standard and introduces no new incident or new lesson; no application tests or deployments were run.
 - Open uncertainties: Required status-check protection on the default branch still needs administrator activation.
+
+
+## REVIEW-2026-11-10-PROJECT-ROUTING-GUARD
+- Global knowledge reviewed: YES
+- Project knowledge reviewed: YES
+- New project incident: NONE in this repository; originating misroute is recorded in NowAway Brain as INCIDENT-2026-11-10-013.
+- New cross-project lesson: GLOBAL-007 — resolve the project from the latest user request and require an exact repository/ID/branch scope lock before any mutation.
+- Verification: Canonical routing and global failure files synchronized from THE-INTERNET; root AGENTS.md now requires the routing gate. Documentation-only change; no app build, deployment or browser test was run.
+- Open uncertainties: PR review/merge and required-branch-protection enforcement remain to be completed/verified.

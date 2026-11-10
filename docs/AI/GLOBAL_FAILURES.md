@@ -72,3 +72,11 @@ The PR template and `.github/workflows/ai-failure-memory-gate.yml` validate this
 When a new project incident is found, append it to `docs/AI/PROJECT_FAILURES.md` (or the canonical register named there). When a reusable cross-project lesson is found, append it to `docs/AI/GLOBAL_FAILURES.md` and synchronize the exact updated file to every registered repository, then verify identical content.
 
 For every new repository created or adopted for this user, run `docs/AI/NEW_REPOSITORY_BOOTSTRAP.md` before the first code change.
+
+
+### GLOBAL-007 — Carrying project context across an explicit project switch
+- Pattern: A follow-up request is applied to the repository used in the preceding chat/task even though the latest request names a different product, or the product name maps to multiple repositories.
+- Confirmed example: On 2026-11-10, a request meant for the NowAway travel project was applied to NowAway Brain because the immediately preceding context was Brain. The Brain CSS was restored byte-for-byte to its pre-task blob in rollback commit `3681f65db87463c399296cc5bdde76058afbd9eb`; see `NowAwayB2C/NowAway_Brain` incident `INCIDENT-2026-11-10-013`.
+- Why it fails: Conversation continuity is not repository identity. Similar product names, multiple active repositories, browser tabs and service associations can make stale context feel more authoritative than the latest user instruction.
+- Prevention: Read `docs/AI/PROJECT_ROUTING.md` and resolve product + exact repository name + numeric GitHub ID from the latest user request on every task. A project switch resets the previous repository/branch/service scope. Before any mutation, create a scope lock containing product, repository ID, branch, target paths and deployment service/URL. If ambiguous, fail closed and ask one direct clarification.
+- Enforcement limitation: Instructions and memory files cannot force an AI or tool to comply. Require PR review and a CI scope-record check through branch protection; restrict deployment permissions to the intended service. Never claim absolute prevention from prompts alone.
