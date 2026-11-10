@@ -45,8 +45,8 @@ jobs:
           }
           require_added "- Global knowledge reviewed: YES"
           require_added "- Project knowledge reviewed: YES"
-          require_added "- Verification: "
-          require_added "- Open uncertainties: "
+          grep -Eq "^- Verification: .+" <<< "$added_log" || fail "The new learning-log entry must state the exact verification result."
+          grep -Eq "^- Open uncertainties: .+" <<< "$added_log" || fail "The new learning-log entry must state unresolved questions or NONE."
 
           project_line="$(grep -E '^- New project incident: (NONE|[A-Z0-9][A-Z0-9._-]*)$' <<< "$added_log" | tail -n 1 || true)"
           global_line="$(grep -E '^- New cross-project lesson: (NONE|[A-Z0-9][A-Z0-9._-]*)$' <<< "$added_log" | tail -n 1 || true)"
