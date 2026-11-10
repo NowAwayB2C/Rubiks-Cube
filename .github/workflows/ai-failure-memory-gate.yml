@@ -1,0 +1,74 @@
+name: AI failure-memory gate
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  failure-memory-review:
+    name: AI failure-memory review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require reviewed and updated learning record
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          LOG="docs/AI/LEARNING_LOG.md"
+          GLOBAL="docs/AI/GLOBAL_FAILURES.md"
+          PROJECT="docs/AI/PROJECT_FAILURES.md"
+
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          grep -Fxq "$LOG" <<< "$changed" || fail "Every PR must append a review entry to $LOG."
+
+          added_log="$(git diff --unified=0 "$BASE_SHA" "$HEAD_SHA" -- "$LOG" | awk 'substr($0,1,1)=="+" && substr($0,1,3)!="+++" { print substr($0,2) }')"
+          marker="<!-- AI-FAILURE-REVIEW: PR-$PR_NUMBER -->"
+          grep -Fqx -- "$marker" <<< "$added_log" || fail "Add the unique marker $marker to the new learning-log entry."
+
+          require_added() {
+            grep -Fqx -- "$1" <<< "$added_log" || fail "The new learning-log entry must contain: $1"
+          }
+          require_added "- Global knowledge reviewed: YES"
+          require_added "- Project knowledge reviewed: YES"
+          grep -Eq "^- Verification: .+" <<< "$added_log" || fail "The new learning-log entry must state the exact verification result."
+          grep -Eq "^- Open uncertainties: .+" <<< "$added_log" || fail "The new learning-log entry must state unresolved questions or NONE."
+
+          project_line="$(grep -E '^- New project incident: (NONE|[A-Z0-9][A-Z0-9._-]*)$' <<< "$added_log" | tail -n 1 || true)"
+          global_line="$(grep -E '^- New cross-project lesson: (NONE|[A-Z0-9][A-Z0-9._-]*)$' <<< "$added_log" | tail -n 1 || true)"
+          [[ -n "$project_line" ]] || fail "State a project incident ID or NONE in the learning log."
+          [[ -n "$global_line" ]] || fail "State a cross-project lesson ID or NONE in the learning log."
+
+          project_id="${project_line#- New project incident: }"
+          global_id="${global_line#- New cross-project lesson: }"
+
+          if [[ "$project_id" != "NONE" ]]; then
+            if ! grep -Fxq "$PROJECT" <<< "$changed" &&                ! grep -Fxq "docs/ERRORS_AND_INCIDENTS.md" <<< "$changed" &&                ! grep -Fxq "docs/OPEN_ISSUES.md" <<< "$changed"; then
+              fail "New project incident $project_id must be appended to the project-specific/canonical incident register."
+            fi
+          fi
+
+          if [[ "$global_id" != "NONE" ]] && ! grep -Fxq "$GLOBAL" <<< "$changed"; then
+            fail "New cross-project lesson $global_id must be appended to $GLOBAL."
+          fi
+
+          for item in             "- [x] Read the shared global failure register"             "- [x] Read the project-specific failure register and its canonical incident log"             "- [x] Appended this PR's review to docs/AI/LEARNING_LOG.md"             "- [x] Recorded each new project failure, or explicitly marked NONE"             "- [x] Recorded each new cross-project lesson and synchronized all repositories, or explicitly marked NONE"
+          do
+            grep -Fq -- "$item" <<< "$PR_BODY" || fail "Complete every AI failure-memory checklist item in the PR description: $item"
+          done
+
+          echo "AI failure-memory review passed for PR #$PR_NUMBER."
