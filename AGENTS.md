@@ -13,3 +13,7 @@ Append every newly observed project-specific failure to docs/AI/PROJECT_FAILURES
 
 ## Repository-specific rules
 Read and preserve existing README, CONTRIBUTING, architecture, security, deployment and nested agent instructions. They remain in force and are not replaced by this file. Use branches/PRs and required tests where the repository requires them. Do not claim a fix, test, deployment or write-back unless it was verified.
+
+
+## Mandatory per-PR learning and merge gate
+Before any technical work, read docs/AI/GLOBAL_FAILURES.md, docs/AI/PROJECT_FAILURES.md and docs/AI/LEARNING_LOG.md, plus the canonical incident register linked from the project register. Every PR must append a unique entry to docs/AI/LEARNING_LOG.md, even when both incident and reusable-learning outcomes are NONE. Record evidence, actual verification and unresolved questions. New project incidents must be appended to the project/canonical incident register; reusable lessons must be added to GLOBAL_FAILURES.md and synchronized byte-for-byte to every onboarded repository. Complete the PR checklist and pass the AI failure-memory review check. For every new repository created or adopted, run docs/AI/NEW_REPOSITORY_BOOTSTRAP.md before the first code change. If branch protection does not require the check, explicitly report that merge enforcement is not active.
