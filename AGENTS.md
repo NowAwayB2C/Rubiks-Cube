@@ -17,3 +17,16 @@ Read and preserve existing README, CONTRIBUTING, architecture, security, deploym
 
 ## Mandatory per-PR learning and merge gate
 Before any technical work, read docs/AI/GLOBAL_FAILURES.md, docs/AI/PROJECT_FAILURES.md and docs/AI/LEARNING_LOG.md, plus the canonical incident register linked from the project register. Every PR must append a unique entry to docs/AI/LEARNING_LOG.md, even when both incident and reusable-learning outcomes are NONE. Record evidence, actual verification and unresolved questions. New project incidents must be appended to the project/canonical incident register; reusable lessons must be added to GLOBAL_FAILURES.md and synchronized byte-for-byte to every onboarded repository. Complete the PR checklist and pass the AI failure-memory review check. For every new repository created or adopted, run docs/AI/NEW_REPOSITORY_BOOTSTRAP.md before the first code change. If branch protection does not require the check, explicitly report that merge enforcement is not active.
+
+
+## Universal operational verification gate
+
+These rules apply beyond code changes to every substantial task involving external services, files, inboxes, calendars, repositories, automation, or persistent state:
+- Read `docs/AI/GLOBAL_FAILURES.md` and the relevant project failure register before acting.
+- Establish the complete in-scope inventory and track every source/page/cursor independently.
+- Use canonical stable IDs and validate every compact mapping against the actual provider identity; never trust array position or display order.
+- Normalize source and baseline data with the same deterministic function.
+- Do not mutate authoritative state or report completion while any required source, page, mapping, or postcondition remains unverified.
+- After side effects, independently read back the resulting state; do not equate tool acceptance with success.
+- Record new root causes and regression controls in the versioned global/project failure memory.
+- When these repository rules are not loaded in a separate ChatGPT conversation, do not claim they enforce that conversation: project files cannot modify model weights or automatically inject themselves into unrelated chats.
